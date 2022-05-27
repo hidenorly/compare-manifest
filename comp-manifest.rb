@@ -21,38 +21,38 @@ require 'optparse'
 class RepoUtil
 	DEF_MANIFESTFILE = "manifest.xml"
 	DEF_MANIFESTFILE_DIRS = [
-	        "/.repo/",
-	        "/.repo/manifests/"
+        "/.repo/",
+        "/.repo/manifests/"
 	]
 
 	def self.getAvailableManifestPath(basePath, manifestFilename)
-	        DEF_MANIFESTFILE_DIRS.each do |aDir|
-	                path = basePath + aDir.to_s + manifestFilename
-	                if FileTest.exist?(path) then
-	                        return path
-	                end
-	        end
-	        return nil
+        DEF_MANIFESTFILE_DIRS.each do |aDir|
+            path = basePath + aDir.to_s + manifestFilename
+            if FileTest.exist?(path) then
+                return path
+            end
+        end
+        return nil
 	end
 
 	def self.getPathesFromManifestSub(basePath, manifestFilename, pathes)
-	        manifestPath = getAvailableManifestPath(basePath, manifestFilename)
-	        if manifestPath && FileTest.exist?(manifestPath) then
-	                doc = REXML::Document.new(open(manifestPath))
-	                doc.elements.each("manifest/include[@name]") do |anElement|
-	                        getPathesFromManifestSub(basePath, anElement.attributes["name"], pathes)
-	                end
-	                doc.elements.each("manifest/project[@path]") do |anElement|
-	                        pathes << anElement.attributes["name"]
-	                end
-	        end
+        manifestPath = getAvailableManifestPath(basePath, manifestFilename)
+        if manifestPath && FileTest.exist?(manifestPath) then
+            doc = REXML::Document.new(open(manifestPath))
+            doc.elements.each("manifest/include[@name]") do |anElement|
+                getPathesFromManifestSub(basePath, anElement.attributes["name"], pathes)
+            end
+            doc.elements.each("manifest/project[@path]") do |anElement|
+                pathes << anElement.attributes["name"]
+            end
+        end
 	end
 
 	def self.getPathesFromManifest(basePath)
-	        pathes = []
-	        getPathesFromManifestSub(basePath, DEF_MANIFESTFILE, pathes)
+        pathes = []
+        getPathesFromManifestSub(basePath, DEF_MANIFESTFILE, pathes)
 
-	        return pathes
+        return pathes
 	end
 end
 
