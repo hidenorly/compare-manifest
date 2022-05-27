@@ -19,22 +19,40 @@ require 'rexml/document'
 require 'optparse'
 
 class RepoUtil
-	DEF_MANIFESTFILE = "/.repo/manifest.xml"
-	DEF_MANIFESTFILE2 = "/.repo/manifests/default.xml"
+	DEF_MANIFESTFILE = "manifest.xml"
+	DEF_MANIFESTFILE_DIRS = [
+	        "/.repo/",
+	        "/.repo/manifests/"
+	]
+
+	def self.getAvailableManifestPath(basePath, manifestFilename)
+	        DEF_MANIFESTFILE_DIRS.each do |aDir|
+	                path = basePath + aDir.to_s + manifestFilename
+	                if FileTest.exist?(path) then
+	                        return path
+	                end
+	        end
+	        return nil
+	end
+
+	def self.getPathesFromManifestSub(basePath, manifestFilename, pathes)
+	        manifestPath = getAvailableManifestPath(basePath, manifestFilename)
+	        if manifestPath && FileTest.exist?(manifestPath) then
+	                doc = REXML::Document.new(open(manifestPath))
+	                doc.elements.each("manifest/include[@name]") do |anElement|
+	                        getPathesFromManifestSub(basePath, anElement.attributes["name"], pathes)
+	                end
+	                doc.elements.each("manifest/project[@path]") do |anElement|
+	                        pathes << anElement.attributes["name"]
+	                end
+	        end
+	end
 
 	def self.getPathesFromManifest(basePath)
-		pathes = []
-		manifestPath = basePath + DEF_MANIFESTFILE
-		manifestPath = basePath + DEF_MANIFESTFILE2 if FileTest.exist?(basePath + DEF_MANIFESTFILE2)
+	        pathes = []
+	        getPathesFromManifestSub(basePath, DEF_MANIFESTFILE, pathes)
 
-		if FileTest.exist?(manifestPath) then
-			doc = REXML::Document.new(open(manifestPath))
-			doc.elements.each("manifest/project[@name]") do |anElement|
-				pathes << anElement.attributes["name"]
-			end
-		end
-
-		return pathes
+	        return pathes
 	end
 end
 
