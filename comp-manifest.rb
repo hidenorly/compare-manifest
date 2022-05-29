@@ -35,25 +35,28 @@ class RepoUtil
 		return nil
 	end
 
-	def self.getPathesFromManifestSub(basePath, manifestFilename, pathes, groups)
+	def self.getPathesFromManifestSub(basePath, manifestFilename, pathes, pathFilter, groupFilter)
 		manifestPath = getAvailableManifestPath(basePath, manifestFilename)
 		if manifestPath && FileTest.exist?(manifestPath) then
 			doc = REXML::Document.new(open(manifestPath))
 			doc.elements.each("manifest/include[@name]") do |anElement|
-				getPathesFromManifestSub(basePath, anElement.attributes["name"], pathes, groups)
+				getPathesFromManifestSub(basePath, anElement.attributes["name"], pathes, pathFilter, groupFilter)
 			end
 			doc.elements.each("manifest/project[@path]") do |anElement|
-				theGroups = anElement.attributes["groups"].to_s
-				if theGroups.empty? || groups.empty? || ( !groups.to_s.empty? && theGroups.match( groups.to_s ) ) then
-					pathes << anElement.attributes["name"]
+				theGitPath = anElement.attributes["name"].to_s
+				if pathFilter.empty? || ( !pathFilter.to_s.empty? && theGitPath.match( pathFilter.to_s ) ) then
+					theGroups = anElement.attributes["groups"].to_s
+					if theGroups.empty? || groupFilter.empty? || ( !groupFilter.to_s.empty? && theGroups.match( groupFilter.to_s ) ) then
+						pathes << theGitPath
+					end
 				end
 			end
 		end
 	end
 
-	def self.getPathesFromManifest(basePath, groups)
+	def self.getPathesFromManifest(basePath, pathFilter, groupFilter)
 		pathes = []
-		getPathesFromManifestSub(basePath, DEF_MANIFESTFILE, pathes, groups)
+		getPathesFromManifestSub(basePath, DEF_MANIFESTFILE, pathes, pathFilter, groupFilter)
 
 		return pathes
 	end
@@ -108,11 +111,16 @@ end
 operation = "2 - 1"
 
 options = {
+	:path => "",
 	:groups => "",
 }
 
 opt_parser = OptionParser.new do |opts|
 	opts.banner = "Usage: [operation(default:\"#{operation}\")] <origin home dir(1)> <target home dir(2)> [<..>]\n#{__FILE__} \"2 - 1\" ~/work/s ~/work/master"
+
+	opts.on("-p", "--gitpath=", "Specify manifest's path(git) attribute filter as regexp e.g. platform/") do |path|
+		options[:path] = path
+	end
 
 	opts.on("-g", "--groups=", "Specify manifest's groups attribute filter as regexp e.g. pdk") do |groups|
 		options[:groups] = groups
@@ -134,7 +142,7 @@ if ARGV.length > 2 then
 end
 for i in startPos..ARGV.length - 1 do
 	if FileTest.directory?( ARGV[i] ) then
-		repos << RepoUtil.getPathesFromManifest( ARGV[i], options[:groups] )
+		repos << RepoUtil.getPathesFromManifest( ARGV[i], options[:path], options[:groups] )
 	else
 		puts ".repo/manifest.xml is not found in #{ARGV[i]}"
 		exit(-1)
